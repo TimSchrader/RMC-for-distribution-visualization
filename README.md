@@ -1,4 +1,4 @@
-# Revers Monte Carlo for distribution visualization
+# Reverse Monte Carlo for distribution visualization
 
 [![Run this App online](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rmc-for-distribution-visualization.streamlit.app/)
 
