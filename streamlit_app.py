@@ -1,151 +1,107 @@
 import streamlit as st
 import pandas as pd
 import math
-from pathlib import Path
+#from pathlib import Path
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title='RMC4Vis',
 )
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
-
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
-
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
+def isNumber(someString) -> bool:
+    return someString.replace('.','',1).isdigit()
+# -----------------------------------------------------------------------------
+# initialization
+if 'initialized' not in st.session_state \
+    or not st.session_state.initialized:
+    st.session_state.initialized = True
+    st.session_state.constraints=[]
 # -----------------------------------------------------------------------------
 # Draw the actual page
 
 # Set the title that appears at the top of the page.
 '''
-# :earth_americas: GDP dashboard
+# RMC4Vis
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
+This is a simple implementation of a [Reverse Monte Carlo algorithm](https://en.wikipedia.org/wiki/Reverse_Monte_Carlo) for visualizing a distribution using only simple constraints.
+This is useful if you need to visualize a distribution while making very few assumptions about it.
 '''
 
-# Add some spacing
-''
-''
+min_size_allowed = 10
+max_size_allowed = 10000
+default_size = 20
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+size = st.slider(
+    'How many data points should be simulated for the distribution? (faster for few data points, more accurate for more data points)',
+    min_value=min_size_allowed,
+    max_value=max_size_allowed,
+    value=default_size)
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+st.header('constrains', divider='gray')
+# This section is written in way that makes it easy to add new constraints,
+# even when this leads to duplicate code.
 
-countries = gdp_df['Country Code'].unique()
+addedConstraint=st.selectbox("Add a constraint",\
+                             ("Minimum","Maximum","Mean","Standard Deviation","Range"))
 
-if not len(countries):
-    st.warning("Select at least one country")
+if (addedConstraint=="Minimum"):
+    col1, col2 = st.columns([1,1], vertical_alignment="bottom")
+    with col1: minValue = st.text_input("Minimum")
+    with col2: weight = st.text_input("Weight of this constraint",value="100",key="weightMin")
+    if isNumber(minValue):
+        st.session_state.constraints.append({"type":"min","value":minValue,"weight":weight})
+elif (addedConstraint=="Maximum"):
+    col1, col2 = st.columns([1,1], vertical_alignment="bottom")
+    with col1: maxValue = st.text_input("Maximum")
+    with col2: weight = st.text_input("Weight of this constraint",value="100",key="weightMax")
+    if isNumber(maxValue):
+        st.session_state.constraints.append({"type":"max","value":maxValue,"weight":weight})
+elif (addedConstraint=="Mean"):
+    col1, col2 = st.columns([1,1], vertical_alignment="bottom")
+    with col1: meanValue = st.text_input("Mean")
+    with col2: weight = st.text_input("Weight of this constraint",value="1",key="weightMean")
+    if isNumber(meanValue):
+        st.session_state.constraints.append({"type":"mean","value":meanValue,"weight":weight})
+elif (addedConstraint=="Standard Deviation"):
+    col1, col2 = st.columns([1,1], vertical_alignment="bottom")
+    with col1: stdValue = st.text_input("Standard Deviation")
+    with col2: weight = st.text_input("Weight of this constraint",value="1",key="weightStdDev")
+    if isNumber(stdValue):
+        st.session_state.constraints.append({"type":"std","value":stdValue,"weight":weight})
+elif (addedConstraint=="Range"):
+    col1, col2, col3, col4 = st.columns([1,1,1,1], vertical_alignment="bottom")
+    with col1: fromValue = st.text_input("From")
+    with col2: toValue = st.text_input("To")
+    with col3: amountValue = st.text_input("Amount")
+    with col4: weight = st.text_input("Weight of this constraint",value="1",key="weightRange")
+    if isNumber(fromValue) and isNumber(toValue) and isNumber(amountValue):
+        st.session_state.constraints.append({"type":"range","fromValue":fromValue,"toValue":toValue,"value":amountValue,"weight":weight})
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+constrText = ""
+for constr in st.session_state.constraints:
+    if constr["type"]=="max":
+        constrText += f"The maximum is {constr['value']} (weight: {constr['weight']})\n\n"
+    elif constr["type"]=="min":
+        constrText += f"The minimum is {constr['value']} (weight: {constr['weight']})\n\n"
+    elif constr["type"]=="mean":
+        constrText += f"The mean is {constr['value']} (weight: {constr['weight']})\n\n"
+    elif constr["type"]=="std":
+        constrText += f"The standard deviation is {constr['value']} (weight: {constr['weight']})\n\n"
+    elif constr["type"]=="range":
+        constrText += f"{constr['value']} data points are between {constr['fromValue']} and {constr['toValue']} (weight: {constr['weight']})\n\n"
+st.write(constrText)
 
-''
-''
-''
+st.header('distribution', divider='gray')
 
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
+distr_df=pd.DataFrame({"x":[1,2,3,4,5,6,7,8,9],"y":[1,2,3,6,6,6,3,2,1]})
 
 ''
 
 st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+    distr_df,
+    x="x",
+    y='y',
 )
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
