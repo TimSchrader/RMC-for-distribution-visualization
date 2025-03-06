@@ -1,6 +1,6 @@
 # Reverse Monte Carlo for distribution visualization
 
-[![Run this App online](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rmc-for-distribution-visualization.streamlit.app/)
+[Run this App online](https://rmc-for-distribution-visualization.streamlit.app/)
 
 This is a simple implementation of a [Reverse Monte Carlo algorithm](https://en.wikipedia.org/wiki/Reverse_Monte_Carlo) for visualizing a distribution using only simple constraints. This is useful if you need to visualize a distribution while making very few assumptions about it.
 
