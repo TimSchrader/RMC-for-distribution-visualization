@@ -46,18 +46,18 @@ def rmcWrapper():
     '''calls the reverse Monte Carlo method'''
 
     # adds the total range
-    st.session_state.starts.append(min(st.session_state.starts))
-    st.session_state.ends.append(max(st.session_state.ends))
-    st.session_state.fracts.append(1.0)
-    st.session_state.weights.append(100) # gets ignored
+    wrappedStarts = st.session_state.starts + [min(st.session_state.starts)]
+    wrappedEnds = st.session_state.ends + [max(st.session_state.ends)]
+    wrappedFracts = st.session_state.fracts + [1.0]
+    wrappedWeights = st.session_state.weights + [100] # gets ignored
 
     st.session_state.distr=rmc(st.session_state.size,\
                                 st.session_state.steps,\
                                 len(st.session_state.starts),\
-                                st.session_state.starts,\
-                                st.session_state.ends,\
-                                st.session_state.fracts,\
-                                st.session_state.weights)
+                                wrappedStarts,\
+                                wrappedEnds,\
+                                wrappedFracts,\
+                                wrappedWeights)
       
 # -----------------------------------------------------------------------------
 # initialization
