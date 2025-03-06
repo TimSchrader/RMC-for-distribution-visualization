@@ -127,7 +127,7 @@ for i in range(len(st.session_state.starts)):
 
 st.header('distribution', divider='gray')
 
-# run RMC
+# run reverse Monte Carlo
 st.button("Simulate",on_click=rmcWrapper)
 
 # plot the results using scipy KDE for a smooth "histogram"

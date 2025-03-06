@@ -38,7 +38,7 @@ def rmc(nSize,nOfSteps,nOfConstr,starts,ends,fracts,weights) -> list:
         if distr[iOfRandDistr] < minimum or distr[iOfRandDistr] > maximum:
             distr[iOfRandDistr] -= randStep
             continue
-
+        
         # evaluate new distr
         newBadness = 0
         for m in range(nOfConstr):
